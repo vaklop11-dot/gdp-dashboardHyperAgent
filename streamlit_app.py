@@ -2,150 +2,122 @@ import streamlit as st
 import pandas as pd
 import math
 from pathlib import Path
+from typing import Optional
 
-# Set the title and favicon that appear in the Browser's tab bar.
-st.set_page_config(
-    page_title='GDP dashboard',
-    page_icon=':earth_americas:', # This is an emoji shortcode. Could be a URL too.
-)
+from config import PROJECT_NAME
 
-# -----------------------------------------------------------------------------
-# Declare some useful functions.
+# Optional: import fetch helper if available
+try:
+    from fetch_worldbank import fetch_indicator
+except Exception:
+    fetch_indicator = None
 
 @st.cache_data
 def get_gdp_data():
-    """Grab GDP data from a CSV file.
-
-    This uses caching to avoid having to read the file every time. If we were
-    reading from an HTTP endpoint instead of a file, it's a good idea to set
-    a maximum age to the cache with the TTL argument: @st.cache_data(ttl='1d')
-    """
-
-    # Instead of a CSV on disk, you could read from an HTTP endpoint here too.
-    DATA_FILENAME = Path(__file__).parent/'data/gdp_data.csv'
+    """Grab GDP data from a CSV file."""
+    DATA_FILENAME = Path(__file__).parent / 'data' / 'gdp_data.csv'
     raw_gdp_df = pd.read_csv(DATA_FILENAME)
 
     MIN_YEAR = 1960
     MAX_YEAR = 2022
 
-    # The data above has columns like:
-    # - Country Name
-    # - Country Code
-    # - [Stuff I don't care about]
-    # - GDP for 1960
-    # - GDP for 1961
-    # - GDP for 1962
-    # - ...
-    # - GDP for 2022
-    #
-    # ...but I want this instead:
-    # - Country Name
-    # - Country Code
-    # - Year
-    # - GDP
-    #
-    # So let's pivot all those year-columns into two: Year and GDP
     gdp_df = raw_gdp_df.melt(
         ['Country Code'],
         [str(x) for x in range(MIN_YEAR, MAX_YEAR + 1)],
         'Year',
         'GDP',
     )
-
-    # Convert years from string to integers
     gdp_df['Year'] = pd.to_numeric(gdp_df['Year'])
-
     return gdp_df
 
-gdp_df = get_gdp_data()
-
-# -----------------------------------------------------------------------------
-# Draw the actual page
-
-# Set the title that appears at the top of the page.
-'''
-# :earth_americas: GDP dashboard
-
-Browse GDP data from the [World Bank Open Data](https://data.worldbank.org/) website. As you'll
-notice, the data only goes to 2022 right now, and datapoints for certain years are often missing.
-But it's otherwise a great (and did I mention _free_?) source of data.
-'''
-
-# Add some spacing
-''
-''
-
-min_value = gdp_df['Year'].min()
-max_value = gdp_df['Year'].max()
-
-from_year, to_year = st.slider(
-    'Which years are you interested in?',
-    min_value=min_value,
-    max_value=max_value,
-    value=[min_value, max_value])
-
-countries = gdp_df['Country Code'].unique()
-
-if not len(countries):
-    st.warning("Select at least one country")
-
-selected_countries = st.multiselect(
-    'Which countries would you like to view?',
-    countries,
-    ['DEU', 'FRA', 'GBR', 'BRA', 'MEX', 'JPN'])
-
-''
-''
-''
-
-# Filter the data
-filtered_gdp_df = gdp_df[
-    (gdp_df['Country Code'].isin(selected_countries))
-    & (gdp_df['Year'] <= to_year)
-    & (from_year <= gdp_df['Year'])
-]
-
-st.header('GDP over time', divider='gray')
-
-''
-
-st.line_chart(
-    filtered_gdp_df,
-    x='Year',
-    y='GDP',
-    color='Country Code',
-)
-
-''
-''
+@st.cache_data
+def load_worldbank_indicator(iso3: str, code: str, date_range: str, out_dir: Path):
+    """Load a World Bank indicator CSV from disk, fetching it if needed."""
+    out_dir.mkdir(parents=True, exist_ok=True)
+    csv_path = out_dir / f"{iso3}_{code}.csv"
+    if not csv_path.exists():
+        if fetch_indicator is None:
+            raise RuntimeError("fetch_indicator helper is unavailable")
+        fetch_indicator(iso3, code, out_dir, date_range)
+    df = pd.read_csv(csv_path)
+    df = df[['countryiso3code', 'date', 'value']].rename(
+        columns={'countryiso3code': 'Country Code', 'date': 'Year', 'value': 'GDP per Capita'})
+    df['Year'] = pd.to_numeric(df['Year'], errors='coerce')
+    return df.sort_values('Year')
 
 
-first_year = gdp_df[gdp_df['Year'] == from_year]
-last_year = gdp_df[gdp_df['Year'] == to_year]
+def render_gdp_dashboard() -> None:
+    """Render the GDP dashboard inside the unified landing page."""
+    st.header('GDP Dashboard')
+    st.markdown(
+        'Pregledaj GDP podatke uz mogućnost filtriranja po zemlji i periodu. '
+        'Ovaj modul je integrisan u glavnu landing stranicu.'
+    )
 
-st.header(f'GDP in {to_year}', divider='gray')
+    gdp_df = get_gdp_data()
+    min_value = int(gdp_df['Year'].min())
+    max_value = int(gdp_df['Year'].max())
 
-''
+    from_year, to_year = st.slider(
+        'Koji raspon godina želiš analizirati?',
+        min_value=min_value,
+        max_value=max_value,
+        value=[min_value, max_value],
+    )
 
-cols = st.columns(4)
+    countries = sorted(gdp_df['Country Code'].unique())
+    if not countries:
+        st.warning('Nema dostupnih podataka za zemlje.')
+        return
 
-for i, country in enumerate(selected_countries):
-    col = cols[i % len(cols)]
+    selected_countries = st.multiselect(
+        'Odaberi zemlje za analizu',
+        countries,
+        ['DEU', 'FRA', 'GBR', 'BRA', 'MEX', 'JPN'],
+    )
 
-    with col:
-        first_gdp = first_year[first_year['Country Code'] == country]['GDP'].iat[0] / 1000000000
-        last_gdp = last_year[last_year['Country Code'] == country]['GDP'].iat[0] / 1000000000
+    filtered_gdp_df = gdp_df[
+        (gdp_df['Country Code'].isin(selected_countries))
+        & (gdp_df['Year'] >= from_year)
+        & (gdp_df['Year'] <= to_year)
+    ]
 
-        if math.isnan(first_gdp):
-            growth = 'n/a'
-            delta_color = 'off'
-        else:
-            growth = f'{last_gdp / first_gdp:,.2f}x'
-            delta_color = 'normal'
+    st.subheader('GDP over time')
+    st.line_chart(
+        filtered_gdp_df,
+        x='Year',
+        y='GDP',
+        color='Country Code',
+    )
 
-        st.metric(
-            label=f'{country} GDP',
-            value=f'{last_gdp:,.0f}B',
-            delta=growth,
-            delta_color=delta_color
-        )
+    first_year = gdp_df[gdp_df['Year'] == from_year]
+    last_year = gdp_df[gdp_df['Year'] == to_year]
+
+    st.subheader(f'GDP u {to_year}')
+    cols = st.columns(4)
+    for i, country in enumerate(selected_countries):
+        col = cols[i % len(cols)]
+        with col:
+            first_gdp_series = first_year[first_year['Country Code'] == country]['GDP']
+            last_gdp_series = last_year[last_year['Country Code'] == country]['GDP']
+            first_gdp = first_gdp_series.iat[0] / 1_000_000_000 if not first_gdp_series.empty else float('nan')
+            last_gdp = last_gdp_series.iat[0] / 1_000_000_000 if not last_gdp_series.empty else float('nan')
+
+            if math.isnan(first_gdp) or math.isnan(last_gdp):
+                growth = 'n/a'
+                delta_color = 'off'
+            else:
+                growth = f'{last_gdp / first_gdp:,.2f}x'
+                delta_color = 'normal'
+
+            st.metric(
+                label=f'{country} GDP',
+                value=f'{last_gdp:,.0f}B' if not math.isnan(last_gdp) else 'n/a',
+                delta=growth,
+                delta_color=delta_color,
+            )
+
+
+if __name__ == '__main__':
+    st.set_page_config(page_title=PROJECT_NAME, page_icon=':earth_americas:')
+    render_gdp_dashboard()
