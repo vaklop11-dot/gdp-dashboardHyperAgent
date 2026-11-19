@@ -38,6 +38,18 @@ Una# Revolucija je data-driven Streamlit aplikacija i sistem za analizu GDP/indi
    $ cat INDUSTRY_CNC_CONTROLLER_SPEC.md
    ```
 
+## Una# Asistent (UnaRevolucija + HyperAgent)
+
+Jedan AI asistent: domenski agenti rade paralelno → orkestrator sintetizuje → Đavolji advokat
+(deterministička pravila + Gemini kritičar) → Refiner (max 2 popravke). Ako odgovor ni tada ne prođe,
+vraća se označen sa **NEMAM POTVRDU** i listom nalaza, a anomalija ide u `data/anomaly_log.jsonl`.
+Memorija sesija: `trenutno_stanje.una` (zlib, 30 dana).
+
+- Ključ: besplatno na https://aistudio.google.com → `GEMINI_API_KEY` u `.env`, okruženju ili Streamlit secrets.
+- Terminal: `start.bat` (Windows) / `./start.sh` → chat u terminalu. Komande: `agenti`, `historija`, `kraj`.
+- Web: `start.bat web` / `./start.sh web` → stranica **Una Asistent** u `app.py`.
+- Kod: `una/` (llm, memory, quality, assistant), `una_cli.py`, `una_page.py`. Testovi: `pytest -q`.
+
 ## Immediate run scripts
 
 Use the included helper scripts for one-command startup.

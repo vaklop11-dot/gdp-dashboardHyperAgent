@@ -1,4 +1,5 @@
 import json
+import re
 from typing import Dict, List
 
 from config import THRESHOLD_ACCURACY, THRESHOLD_COMPLETENESS, THRESHOLD_SAFETY
@@ -12,12 +13,20 @@ class DevilAdvocateCritic:
         c = code.lower() if code else ""
         p = prompt.lower() if prompt else ""
 
-        self._evaluate_embedded(code=c, issues=issues)
+        # Industrijska pravila važe samo kad je ZADATAK industrijski/embedded
+        # (ranije je npr. "Gemini Flash" u odgovoru okidao flash-memory pravila).
+        industrial = self._is_industrial(p if p else c)
+        if industrial:
+            self._evaluate_embedded(code=c, issues=issues)
         self._evaluate_una_edge(prompt=p, code=c, issues=issues)
 
         accuracy = max(0.5, 1.0 - len(issues) * 0.15)
         completeness = 0.90 if not issues else 0.70
-        safety = 0.95 if self._has_safety_feature(c) else 0.60
+        # Ranije: 0.60 za SVAKI zadatak bez E-Stop -> svako obično pitanje je bilo FAIL.
+        if industrial:
+            safety = 0.95 if self._has_safety_feature(c) else 0.60
+        else:
+            safety = 0.95
         verdict = self._compute_verdict(accuracy, completeness, safety)
 
         return {
@@ -31,6 +40,13 @@ class DevilAdvocateCritic:
     def evaluate_json(self, code: str, persona: str = "", prompt: str = "") -> str:
         result = self.evaluate(code, persona, prompt)
         return json.dumps(result, ensure_ascii=False)
+
+    INDUSTRIAL_KEYWORDS = ("gpio", "cnc", "embedded", "spi", "freertos", "firmware",
+                           "esp32", "rp2040", "plc", "mikrokontroler", "microcontroller")
+
+    @classmethod
+    def _is_industrial(cls, text: str) -> bool:
+        return any(re.search(rf"\b{k}\b", text) for k in cls.INDUSTRIAL_KEYWORDS)
 
     @staticmethod
     def _has_safety_feature(code: str) -> bool:
@@ -51,11 +67,9 @@ class DevilAdvocateCritic:
     @staticmethod
     def _evaluate_una_edge(prompt: str, code: str, issues: List[str]) -> None:
         if "una#" in prompt or "edge" in prompt or "energy" in prompt or "potrošnja" in prompt:
-            if "nemam potvrdu" in code:
-                issues.append(
-                    "Nedostatak izvora: Tvrdnja o potrošnji ili performansama bez jasnog benchmarka ili egzaktnog izvora."
-                )
-            if any(token in code for token in ["%", "x manja", "procen", "percent", "times smaller"]):
+            # "NEMAM POTVRDU" je ispravno ponašanje po pravilniku i više se ne kažnjava.
+            if "nemam potvrdu" not in code and any(
+                    token in code for token in ["%", "x manja", "procen", "percent", "times smaller"]):
                 issues.append(
                     "Neprovjerena tvrdnja o procentima/efikasnosti bez referentnog benchmarka ili mjerenja."
                 )
