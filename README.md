@@ -38,17 +38,29 @@ Una# Revolucija je data-driven Streamlit aplikacija i sistem za analizu GDP/indi
    $ cat INDUSTRY_CNC_CONTROLLER_SPEC.md
    ```
 
-## Una# Asistent (UnaRevolucija + HyperAgent)
+## Una# Asistent (UnaRevolucija + HyperAgent) — Cloudflare
 
-Jedan AI asistent: domenski agenti rade paralelno → orkestrator sintetizuje → Đavolji advokat
-(deterministička pravila + Gemini kritičar) → Refiner (max 2 popravke). Ako odgovor ni tada ne prođe,
-vraća se označen sa **NEMAM POTVRDU** i listom nalaza, a anomalija ide u `data/anomaly_log.jsonl`.
-Memorija sesija: `trenutno_stanje.una` (zlib, 30 dana).
+Jedan AI asistent: domenski agenti → sinteza → Đavolji advokat (deterministička pravila + kritičar na
+drugom modelu) → Refiner (max 2 popravke). Ako odgovor ni tada ne prođe, vraća se označen sa
+**NEMAM POTVRDU** i listom nalaza. Modeli: Cloudflare Workers AI (bez Geminija).
 
-- Ključ: besplatno na https://aistudio.google.com → `GEMINI_API_KEY` u `.env`, okruženju ili Streamlit secrets.
-- Terminal: `start.bat` (Windows) / `./start.sh` → chat u terminalu. Komande: `agenti`, `historija`, `kraj`.
-- Web: `start.bat web` / `./start.sh web` → stranica **Una Asistent** u `app.py`.
-- Kod: `una/` (llm, memory, quality, assistant), `una_cli.py`, `una_page.py`. Testovi: `pytest -q`.
+### Glavna verzija: Cloudflare Worker (`cloudflare/`)
+Bez API ključa za korisnike — Worker koristi `env.AI`. Free plan: 10.000 neurona/dan, preko toga zahtjevi padaju.
+
+```bash
+cd cloudflare
+npm install
+npx wrangler login               # jednom, otvara browser
+npx wrangler secret put ACCESS_CODE   # opcionalno: beta kod, da niko ne troši kvotu
+npm run deploy                   # -> https://una-asistent.<tvoj-subdomen>.workers.dev
+npm test                         # testovi bez Cloudflarea
+```
+Modeli i agenti se mijenjaju u `cloudflare/wrangler.toml` (`MODEL_MAIN`, `MODEL_CRITIC`, `AGENTS`).
+Historija razgovora ostaje u pregledaču korisnika; server je ne čuva. Anomalije: Workers Logs.
+
+### Lokalna Python verzija (terminal / Streamlit)
+Ista logika, poziva Workers AI preko REST API-ja: `CLOUDFLARE_ACCOUNT_ID` + `CLOUDFLARE_API_TOKEN`
+(Cloudflare dashboard → Workers AI → Use REST API). `start.bat` / `./start.sh` → terminal; `start.bat web` → Streamlit.
 
 ## Immediate run scripts
 

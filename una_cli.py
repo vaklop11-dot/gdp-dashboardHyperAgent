@@ -8,7 +8,7 @@ import json
 import os
 import sys
 
-from una.llm import find_api_key
+from una.llm import find_credentials
 
 AGENTS_FILE = "agenti.json"
 ENV_FILE = ".env"
@@ -26,17 +26,20 @@ def ucitaj_env() -> None:
 
 
 def provjeri_kljuc() -> None:
-    if find_api_key():
+    acc, tok = find_credentials()
+    if acc and tok:
         return
-    print("\n  GEMINI API KLJUČ NIJE PRONAĐEN — besplatan ključ: https://aistudio.google.com")
-    kljuc = input("  Unesi GEMINI_API_KEY (Enter = DEMO mod): ").strip()
-    if not kljuc:
+    print("\n  CLOUDFLARE PRISTUP NIJE PRONAĐEN")
+    print("  Cloudflare dashboard → Workers AI → Use REST API: Account ID + Create Workers AI API Token")
+    acc = input("  CLOUDFLARE_ACCOUNT_ID (Enter = DEMO mod): ").strip()
+    tok = input("  CLOUDFLARE_API_TOKEN: ").strip() if acc else ""
+    if not (acc and tok):
         print("  [!] DEMO mod — nema AI odgovora.\n")
         return
-    os.environ["GEMINI_API_KEY"] = kljuc
+    os.environ["CLOUDFLARE_ACCOUNT_ID"], os.environ["CLOUDFLARE_API_TOKEN"] = acc, tok
     with open(ENV_FILE, "w", encoding="utf-8") as fh:
-        fh.write(f"GEMINI_API_KEY={kljuc}\n")
-    print("  [✓] Ključ sačuvan u .env (taj fajl ne dijeli i ne commitaj).\n")
+        fh.write(f"CLOUDFLARE_ACCOUNT_ID={acc}\nCLOUDFLARE_API_TOKEN={tok}\n")
+    print("  [✓] Sačuvano u .env (taj fajl ne dijeli i ne commitaj).\n")
 
 
 def ucitaj_agente() -> list:

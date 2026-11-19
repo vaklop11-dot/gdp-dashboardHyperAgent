@@ -1,0 +1,19 @@
+name = "una-asistent"
+main = "src/index.js"
+compatibility_date = "2026-11-01"
+
+# Workers AI — bez API ključa, naplata/kvota ide na Cloudflare nalog (free: 10.000 neurona/dan).
+[ai]
+binding = "AI"
+
+[observability]
+enabled = true
+
+[vars]
+# Glavni model (agenti, sinteza, refiner) i kritičar — namjerno različiti modeli, da greške ne budu korelirane.
+MODEL_MAIN = "@cf/meta/llama-3.3-70b-instruct-fp8-fast"
+MODEL_CRITIC = "@cf/meta/llama-3.1-8b-instruct-fast"
+# Opcionalno: svoji agenti, npr.
+# AGENTS = '[{"name":"Tehničar","domain":"CNC i embedded","rules":""},{"name":"Ekonomista","domain":"GDP i ekonomija","rules":""}]'
+
+# Beta zaštita od trošenja kvote: `npx wrangler secret put ACCESS_CODE`

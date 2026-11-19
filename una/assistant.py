@@ -69,8 +69,9 @@ def _is_out_of_scope(text: str) -> bool:
 
 class UnaAssistant:
     def __init__(self, agents: Optional[List[Dict]] = None, llm=None,
-                 memory_path: str = "trenutno_stanje.una", api_key: Optional[str] = None):
-        self.llm = llm or make_llm(api_key)
+                 memory_path: str = "trenutno_stanje.una", account_id: Optional[str] = None,
+                 api_token: Optional[str] = None):
+        self.llm = llm or make_llm(account_id, api_token)
         self.agents = [Agent(a["name"], a["domain"], a.get("rules") or DEFAULT_RULES)
                        for a in (agents or DEFAULT_AGENTS)]
         self.memory = Memory(memory_path)

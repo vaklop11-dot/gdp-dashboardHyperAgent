@@ -168,3 +168,6 @@ trenutno_stanje.una.tmp
 agenti.json
 .streamlit/secrets.toml
 data/anomaly_log.jsonl
+cloudflare/node_modules/
+cloudflare/.wrangler/
+cloudflare/.dev.vars

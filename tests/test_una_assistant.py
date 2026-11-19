@@ -118,3 +118,46 @@ def test_corrupt_memory(tmp_path):
     p.write_bytes(b"not zlib")
     m = Memory(str(p))
     assert m.load_error and m.history == []
+
+
+def test_cloudflare_request_shape(monkeypatch):
+    from una import llm as L
+    seen = []
+
+    class R:
+        status_code = 200
+        def json(self):
+            return {"success": True, "result": {"response": "ok"}}
+
+    def fake_post(url, **kw):
+        seen.append((url, kw))
+        return R()
+
+    monkeypatch.setattr(L.requests, "post", fake_post)
+    c = L.CloudflareLLM("ACC", "TOK", model="@cf/main", critic_model="@cf/critic")
+    assert c.generate("pitanje", system="sys") == "ok"
+    assert c.generate("ocijeni", system="k", json_mode=True) == "ok"
+    assert seen[0][0] == "https://api.cloudflare.com/client/v4/accounts/ACC/ai/run/@cf/main"
+    assert seen[1][0].endswith("/ai/run/@cf/critic")
+    assert seen[0][1]["headers"]["Authorization"] == "Bearer TOK"
+    assert seen[0][1]["json"]["messages"][0] == {"role": "system", "content": "sys"}
+
+
+def test_cloudflare_error_raises(monkeypatch):
+    from una import llm as L
+
+    class R:
+        status_code = 429
+        def json(self):
+            return {"success": False, "errors": [{"message": "limit"}]}
+
+    monkeypatch.setattr(L.requests, "post", lambda url, **kw: R())
+    with pytest.raises(L.LLMError):
+        L.CloudflareLLM("A", "T", retries=0).generate("x")
+
+
+def test_no_credentials_is_demo(monkeypatch):
+    from una import llm as L
+    monkeypatch.delenv("CLOUDFLARE_ACCOUNT_ID", raising=False)
+    monkeypatch.delenv("CLOUDFLARE_API_TOKEN", raising=False)
+    assert isinstance(L.make_llm(), L.DemoLLM)
