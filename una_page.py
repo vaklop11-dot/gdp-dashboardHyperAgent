@@ -1,5 +1,7 @@
 """Streamlit stranica 'Una Asistent' (chat). Koristi se iz app.py."""
 import os
+import tempfile
+import uuid
 
 import streamlit as st
 
@@ -36,7 +38,11 @@ def render_una_assistant() -> None:
                 agents.append({"name": parts[0], "domain": parts[1] if len(parts) > 1 else "opšte",
                                "rules": parts[2] if len(parts) > 2 else ""})
         key = st.session_state.get("una_key") or _secret_key() or os.environ.get("GEMINI_API_KEY", "")
-        st.session_state["una_assistant"] = UnaAssistant(agents=agents or None, api_key=key)
+        # Web: svaka sesija ima svoju memoriju, da se razgovori korisnika ne miješaju.
+        sid = st.session_state.setdefault("una_sid", uuid.uuid4().hex)
+        mem_path = os.path.join(tempfile.gettempdir(), f"una_{sid}.una")
+        st.session_state["una_assistant"] = UnaAssistant(agents=agents or None, api_key=key,
+                                                         memory_path=mem_path)
         st.session_state.setdefault("una_chat", [])
 
     asistent: UnaAssistant = st.session_state["una_assistant"]
