@@ -34,6 +34,8 @@ export function agentSystem(a) {
 // ── Deterministička pravila (iz critic.py / quality.py) ─────────────────────
 const INDUSTRIAL = ["gpio", "cnc", "embedded", "spi", "freertos", "firmware", "esp32", "rp2040", "plc",
   "mikrokontroler", "microcontroller"];
+const IMPLEMENT_ASK = /(napi[sš]i|dizajniraj|projektuj|implementiraj|isprogramiraj|\bkod\b|\bcode\b|\bwrite\b|\bdesign\b|\bimplement|\bbuild\b|napravi)/i;
+const CODE_IN_ANSWER = /```|#include|\bvoid\s+\w+\s*\(|\bdef\s+\w+\(|digitalRead|gpio_|while\s*\(/i;
 const SAFETY = ["e-stop", "fail-safe", "fail safe", "emergency stop"];
 const NUMBER_CLAIM = /\d+(?:[.,]\d+)?\s*(?:%|posto|procen)/i;
 const SOURCE_HINT = new RegExp(`(izvor|source|https?://|prema\\s+\\S+|world bank|eurostat|${NEMAM})`, "i");
@@ -45,7 +47,8 @@ const verdictOf = (a, c, s) =>
 export function deterministicAudit(question, answer) {
   const q = question.toLowerCase(), t = answer.toLowerCase();
   const issues = [];
-  const industrial = INDUSTRIAL.some((k) => hasWord(q, k));
+  // Industrijska pravila važe samo kad se traži rješenje/kod (ne za objašnjenje pojma, npr. "šta je PLC").
+  const industrial = INDUSTRIAL.some((k) => hasWord(q, k)) && (IMPLEMENT_ASK.test(q) || CODE_IN_ANSWER.test(answer));
   if (industrial) {
     if (!t.includes("debounc"))
       issues.push("Kritična mana: ulazi nemaju hardverski ili softverski debouncing.");

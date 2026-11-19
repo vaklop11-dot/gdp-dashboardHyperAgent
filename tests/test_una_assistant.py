@@ -161,3 +161,10 @@ def test_no_credentials_is_demo(monkeypatch):
     monkeypatch.delenv("CLOUDFLARE_ACCOUNT_ID", raising=False)
     monkeypatch.delenv("CLOUDFLARE_API_TOKEN", raising=False)
     assert isinstance(L.make_llm(), L.DemoLLM)
+
+
+def test_concept_question_not_industrial():
+    from critic import DevilAdvocateCritic
+    c = DevilAdvocateCritic()
+    assert c.evaluate("PLC je industrijski kontroler.", prompt="šta je plc i čemu služi")["verdict"] == "PASS"
+    assert c.evaluate("gpio read", prompt="napiši cnc firmware")["verdict"] == "FAIL"
