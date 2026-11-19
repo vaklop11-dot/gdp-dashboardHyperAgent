@@ -1,6 +1,7 @@
 import streamlit as st
 from gdp_dashboard import render_gdp_dashboard
 from pipeline import HyperAgent
+from una_page import render_una_assistant
 import json
 from pathlib import Path
 
@@ -263,7 +264,7 @@ def main():
     if 'page' not in st.session_state:
         st.session_state['page'] = 'Landing'
 
-    page = st.sidebar.radio('Navigacija', ['Landing', 'HyperAgent', 'GDP Dashboard'], index=['Landing', 'HyperAgent', 'GDP Dashboard'].index(st.session_state['page']))
+    page = st.sidebar.radio('Navigacija', ['Landing', 'Una Asistent', 'HyperAgent', 'GDP Dashboard'], index=['Landing', 'Una Asistent', 'HyperAgent', 'GDP Dashboard'].index(st.session_state['page']))
     st.session_state['page'] = page
 
     st.sidebar.markdown('---')
@@ -273,6 +274,8 @@ def main():
 
     if page == 'Landing':
         render_landing_page()
+    elif page == 'Una Asistent':
+        render_una_assistant()
     elif page == 'HyperAgent':
         render_hyperagent_page()
     else:
