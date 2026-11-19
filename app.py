@@ -1,5 +1,5 @@
 import streamlit as st
-from streamlit_app import render_gdp_dashboard
+from gdp_dashboard import render_gdp_dashboard
 from pipeline import HyperAgent
 import json
 from pathlib import Path
