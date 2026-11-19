@@ -125,3 +125,9 @@ test("Pravila: industrijska samo za industrijska pitanja; 'flash' ne okida", () 
   assert.equal(deterministicAudit("Napiši CNC firmware", "gpio read").verdict, "FAIL");
   assert.equal(deterministicAudit("Napiši CNC firmware", "gpio read, debouncing, E-Stop").verdict, "PASS");
 });
+
+test("Objašnjenje pojma (šta je PLC) ne pali industrijska pravila; zahtjev za kod pali", () => {
+  assert.equal(deterministicAudit("Šta je PLC i čemu služi?", "PLC je industrijski kontroler.").verdict, "PASS");
+  assert.equal(deterministicAudit("Napiši PLC program za motor", "```\nstart motor\n```").verdict, "FAIL");
+  assert.equal(deterministicAudit("Objasni PLC", "```\nwhile (1) { gpio_read(); }\n```").verdict, "FAIL");
+});

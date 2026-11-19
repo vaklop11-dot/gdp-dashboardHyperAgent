@@ -15,7 +15,9 @@ class DevilAdvocateCritic:
 
         # Industrijska pravila važe samo kad je ZADATAK industrijski/embedded
         # (ranije je npr. "Gemini Flash" u odgovoru okidao flash-memory pravila).
-        industrial = self._is_industrial(p if p else c)
+        # Samo kad se traži rješenje/kod, ne za objašnjenje pojma (npr. "šta je PLC").
+        industrial = self._is_industrial(p if p else c) and (
+            not p or bool(self.IMPLEMENT_ASK.search(p)) or bool(self.CODE_IN_ANSWER.search(code or "")))
         if industrial:
             self._evaluate_embedded(code=c, issues=issues)
         self._evaluate_una_edge(prompt=p, code=c, issues=issues)
@@ -43,6 +45,11 @@ class DevilAdvocateCritic:
 
     INDUSTRIAL_KEYWORDS = ("gpio", "cnc", "embedded", "spi", "freertos", "firmware",
                            "esp32", "rp2040", "plc", "mikrokontroler", "microcontroller")
+
+    IMPLEMENT_ASK = re.compile(r"(napi[sš]i|dizajniraj|projektuj|implementiraj|isprogramiraj|\bkod\b|\bcode\b|"
+                               r"\bwrite\b|\bdesign\b|\bimplement|\bbuild\b|napravi)", re.IGNORECASE)
+    CODE_IN_ANSWER = re.compile(r"```|#include|\bvoid\s+\w+\s*\(|\bdef\s+\w+\(|digitalRead|gpio_|while\s*\(",
+                                re.IGNORECASE)
 
     @classmethod
     def _is_industrial(cls, text: str) -> bool:
