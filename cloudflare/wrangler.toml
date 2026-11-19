@@ -17,3 +17,11 @@ MODEL_CRITIC = "@cf/meta/llama-3.1-8b-instruct-fast"
 # AGENTS = '[{"name":"Tehničar","domain":"CNC i embedded","rules":""},{"name":"Ekonomista","domain":"GDP i ekonomija","rules":""}]'
 
 # Beta zaštita od trošenja kvote: `npx wrangler secret put ACCESS_CODE`
+
+# Preview buildovi (PR grane) — Wrangler traži zasebnu konfiguraciju.
+[previews.vars]
+MODEL_MAIN = "@cf/meta/llama-3.3-70b-instruct-fp8-fast"
+MODEL_CRITIC = "@cf/meta/llama-3.1-8b-instruct-fast"
+
+[previews.ai]
+binding = "AI"
